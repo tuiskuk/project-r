@@ -13,3 +13,121 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+
+
+model Marker {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  latitude    Float
+  longitude   Float
+  type        String
+  icon        String?
+  eventId     String?  // Optional, if linked to an event
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+
+  event       Event?   @relation(fields: [eventId], references: [id])
+
+  User User[]
+}
+
+model User {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  name          String?
+  email         String   @unique
+  imageUrl      String?
+  bio           String?           // Short user bio/description
+  phone         String?           // Optional phone number
+  location      String?           // City or region
+  birthdate     DateTime?         // Optional birthdate
+  gender        String?           // Optional gender
+  website       String?           // Personal website
+  facebook      String?           // Facebook profile URL
+  instagram     String?           // Instagram handle/URL
+  twitter       String?           // Twitter/X handle/URL
+  linkedin      String?           // LinkedIn profile URL
+  interests     String[]          // Array of interests/tags
+  languages     String[]          // Languages spoken
+  isPublic      Boolean  @default(true) // Profile visibility
+  lastActiveAt  DateTime?         // Last seen/active timestamp
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Add relations as needed, for example:
+  events    Event[]  @relation("OrganizerEvents")
+  signups   Signup[]
+  roles     Role[]
+  markers   Marker[] // Added relation to Marker
+}
+
+
+model Event {
+  id           String            @id @default(cuid())
+  title        String           @db.VarChar(255)
+  description  String?          @db.Text
+  type         String           @db.VarChar(100)
+  date         DateTime
+  location     String           @db.VarChar(255)
+  latitude     Float?           @db.DoublePrecision
+  longitude    Float?           @db.DoublePrecision
+  image        String?          @db.Text
+  createdAt    DateTime         @default(now())
+  organizerId  String
+
+  targetGroups EventTargetGroups[]
+  signups      Signup[]
+  roles        Role[]
+
+  @@index([organizerId])
+  @@index([date])
+  Marker Marker[]
+  User User[] @relation("OrganizerEvents")
+}
+
+model TargetGroup {
+  id      String            @id @default(cuid())
+  name    String
+  events  EventTargetGroups[]
+}
+
+model EventTargetGroups {
+  eventId       String
+  targetGroupId String
+
+  event         Event       @relation(fields: [eventId], references: [id])
+  targetGroup   TargetGroup @relation(fields: [targetGroupId], references: [id])
+
+  @@id([eventId, targetGroupId])
+}
+
+model Signup {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  age       Int?
+  createdAt DateTime @default(now())
+
+
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  @@unique([userId, eventId])
+  User User[]
+}
+
+model Role {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  role      String
+  createdAt DateTime @default(now())
+
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  User User[]
+}
+

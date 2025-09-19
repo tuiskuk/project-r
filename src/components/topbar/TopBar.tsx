@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { MobileDrawer } from "./MobileDrawer";
 import { NavTabs } from "./NavTabs";
 import { usePathname } from "next/navigation";
+import { AuthButtons } from "../auth/AuthButtons";
+
 
 export function TopBar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -59,9 +61,7 @@ export function TopBar() {
             </button>
 
             {/* Only Kirjaudu for now */}
-            <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
-              Kirjaudu
-            </Button>
+            <AuthButtons/>
           </div>
         </div>
       </div>
