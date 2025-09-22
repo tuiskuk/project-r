@@ -12,6 +12,7 @@ export async function GET() {
     });
     return NextResponse.json(events);
   } catch (error) {
+    console.error("API error:", error);
     return NextResponse.json([]);
   }
 }
