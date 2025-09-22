@@ -1,9 +1,9 @@
 import { db } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 export async function GET(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -35,7 +35,7 @@ export async function GET(
 }
 
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { userId } = await auth();
@@ -87,7 +87,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { userId } = await auth();
