@@ -24,13 +24,18 @@ export default function EventsPage() {
   const { user } = useUser();
 
   useEffect(() => {
-    fetch("/api/events/all")
-      .then((res) => res.json())
-      .then((data) => {
-        setEvents(data);
-        setLoading(false);
-      });
-  }, []);
+  fetch("/api/events/all")
+    .then((res) => res.json())
+    .then((data) => {
+      // Defensive: ensure events is always an array
+      setEvents(Array.isArray(data) ? data : []);
+      setLoading(false);
+    })
+    .catch(() => {
+      setEvents([]);
+      setLoading(false);
+    });
+}, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Haluatko varmasti poistaa tämän tapahtuman?")) return;
