@@ -21,7 +21,7 @@ export async function GET(
     if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     // Transform so event.targetGroups is an array of { id, name }
-    const targetGroups = event.targetGroups.map((tg: { targetGroup: { id: any; name: any; }; }) => ({
+    const targetGroups = event.targetGroups.map((tg: { targetGroup: { id: string; name: string; }; }) => ({
       id: tg.targetGroup.id,
       name: tg.targetGroup.name,
     }));
@@ -77,7 +77,7 @@ const { id } = await context.params;
   });
 
   // Transform targetGroups for frontend
-  const targetGroups = updated.targetGroups.map((tg: { targetGroup: { id: any; name: any; }; }) => ({
+  const targetGroups = updated.targetGroups.map((tg: { targetGroup: { id: string; name: string; }; }) => ({
     id: tg.targetGroup.id,
     name: tg.targetGroup.name,
   }));

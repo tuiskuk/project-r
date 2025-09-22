@@ -97,7 +97,7 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
         latitude: event.latitude,
         longitude: event.longitude,
         type: event.type,
-        targetGroupIds: event.targetGroups?.map((tg: any) => tg.id) || [],
+        targetGroupIds: event.targetGroups?.map((tg: { id: string }) => tg.id) || [],
         image: null,
       });
       setInitialImage(event.image || null);
