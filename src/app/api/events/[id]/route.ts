@@ -4,15 +4,16 @@ import { auth } from "@clerk/nextjs/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   try {
     const event = await db.event.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         targetGroups: {
           include: {
-            targetGroup: true, // <-- include the actual TargetGroup
+            targetGroup: true,
           },
         },
       },
