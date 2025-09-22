@@ -37,12 +37,13 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+const { id } = await context.params;
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const event = await db.event.findUnique({ where: { id: params.id } });
+  const event = await db.event.findUnique({ where: { id: id } });
   if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (event.organizerId !== userId)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -54,7 +55,7 @@ export async function PATCH(
 
   // Update event fields
   const updated = await db.event.update({
-    where: { id: params.id },
+    where: { id: id },
     data: {
       ...eventData,
       // Update targetGroups relation
@@ -89,23 +90,24 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   // Fetch event to check creator
-  const event = await db.event.findUnique({ where: { id: params.id } });
+  const event = await db.event.findUnique({ where: { id: id } });
   if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (event.organizerId !== userId)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // First, delete related EventTargetGroups
   await db.eventTargetGroups.deleteMany({
-    where: { eventId: params.id },
+    where: { eventId: id },
   });
 
   // Then, delete the event
-  await db.event.delete({ where: { id: params.id } });
+  await db.event.delete({ where: { id: id } });
   return NextResponse.json({ success: true });
 }
