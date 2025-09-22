@@ -1,7 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 // Update the import path below if your db file is located elsewhere
 import { db } from "./prisma";
-import { User } from "@/generated/prisma";
+import { User } from "@/generated/prisma/client";
 
 export const initialUser = async (): Promise<User> => {
   const clerkUser = await currentUser();
