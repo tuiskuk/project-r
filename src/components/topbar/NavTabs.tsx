@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const tabs = [
   { href: "/events", label: "Tapahtumat" },
@@ -10,19 +11,32 @@ const tabs = [
 ];
 
 export function NavTabs() {
+  const pathname = usePathname();
   return (
-    <div className="overflow-x-auto">
-      <div className="flex gap-4 px-2 py-3">
-        {tabs.map((t) => (
+    <nav className="flex gap-1 sm:gap-2 w-full">
+      {tabs.map((t) => {
+        const active = pathname?.startsWith(t.href);
+        return (
           <Link
             key={t.href}
             href={t.href}
-            className="text-sm font-medium px-3 py-1 rounded-md hover:bg-gray-100"
+            className={`
+              flex items-center px-3 sm:px-4 py-2 rounded-md font-semibold text-sm sm:text-base transition
+              border-b-2
+              ${active
+                ? "bg-blue-800/80 border-white text-white shadow-sm"
+                : "bg-transparent border-transparent text-white/80 hover:bg-blue-800/60 hover:border-white hover:text-white"}
+              hover:shadow
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-white
+              cursor-pointer
+            `}
+            tabIndex={0}
+            aria-current={active ? "page" : undefined}
           >
             {t.label}
           </Link>
-        ))}
-      </div>
-    </div>
+        );
+      })}
+    </nav>
   );
 }

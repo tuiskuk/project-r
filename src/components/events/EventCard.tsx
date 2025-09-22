@@ -1,16 +1,36 @@
 "use client";
 import { Heart } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 interface EventCardProps {
+  id: string;
   title: string;
   date: string;
   place: string;
   image: string;
+  href?: string;
+  badges?: React.ReactNode;
+  showEdit?: boolean;
+  showDelete?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export function EventCard({ title, date, place, image }: EventCardProps) {
-  return (
+export function EventCard({
+  id,
+  title,
+  date,
+  place,
+  image,
+  href,
+  badges,
+  showEdit,
+  showDelete,
+  onEdit,
+  onDelete,
+}: EventCardProps) {
+  const CardContent = (
     <motion.div
       whileHover={{ y: -4 }}
       transition={{ duration: 0 }}
@@ -39,7 +59,53 @@ export function EventCard({ title, date, place, image }: EventCardProps) {
         {/* Hover border and shadow layers for the card */}
         <div className="absolute inset-0 rounded-xl pointer-events-none border border-gray-300 opacity-0 hover:opacity-100 transition-opacity duration-300" />
         <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[0_10px_25px_rgba(0,0,0,0.15),-5px_0_15px_rgba(0,0,0,0.05)] opacity-0 hover:opacity-100 transition-opacity duration-300" />
+
+        {/* Badges (target groups, etc.) */}
+        {badges && (
+          <div className="absolute left-4 top-4 flex flex-wrap gap-1 z-10">
+            {badges}
+          </div>
+        )}
+
+        {/* Edit/Delete buttons */}
+        {(showEdit || showDelete) && (
+          <div className="absolute top-4 right-4 flex gap-2 z-20">
+            {showEdit && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onEdit && onEdit();
+                }}
+                className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs"
+              >
+                Muokkaa
+              </button>
+            )}
+            {showDelete && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete && onDelete();
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+              >
+                Poista
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
+  );
+
+  // If href is provided, wrap with Link
+  return href ? (
+    <Link href={href} className="block h-full" prefetch={false}>
+      {CardContent}
+    </Link>
+  ) : (
+    CardContent
   );
 }

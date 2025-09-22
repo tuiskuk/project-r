@@ -110,20 +110,52 @@ export default function Map({
     if (!mapContainerRef.current) return;
 
     setMapLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const userLat = pos.coords.latitude;
-        const userLng = pos.coords.longitude;
-        setUserLocation({ lat: userLat, lng: userLng });
-        initMap(userLat, userLng);
-      },
-      () => {
-        // fallback to Helsinki if denied
-        initMap(initialLat ?? 60.1695, initialLng ?? 24.935);
-      }
-    );
+
+    // If initialLat/Lng are given, center and zoom there
+    if (typeof initialLat === "number" && typeof initialLng === "number") {
+      initMap(initialLat, initialLng, initialZoom);
+    } else {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const userLat = pos.coords.latitude;
+          const userLng = pos.coords.longitude;
+          setUserLocation({ lat: userLat, lng: userLng });
+          initMap(userLat, userLng, initialZoom);
+        },
+        () => {
+          // fallback to Helsinki if denied
+          initMap(60.1695, 24.935, initialZoom);
+        }
+      );
+    }
     // eslint-disable-next-line
-  }, []);
+  }, [initialLat, initialLng, initialZoom]);
+
+  function initMap(lat: number, lng: number, zoom: number) {
+    if (!mapContainerRef.current) return;
+
+    const m = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: "mapbox://styles/mapbox/streets-v12?language=fi",
+      center: [lng, lat], // [lng, lat] order!
+      zoom: zoom,
+    });
+
+    m.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+    m.on("style.load", () => {
+      setStyleLoaded(true);
+      setMapLoading(false);
+      if (userLocation) {
+        addUserLocationDot(m, userLocation.lat, userLocation.lng);
+      }
+    });
+
+    // Click → add or move marker
+    m.on("click", handleMapClick);
+
+    setMap(m);
+  }
 
   // Set marker if initialLat/initialLng are given
   useEffect(() => {
@@ -164,32 +196,6 @@ export default function Map({
       setLabelInput("");
       if (onSelect) onSelect(lat, lng);
     });
-  }
-
-  function initMap(lat: number, lng: number) {
-    if (!mapContainerRef.current) return;
-
-    const m = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/streets-v12?language=fi",
-      center: [lng, lat], // [lng, lat] order!
-      zoom: initialZoom,
-    });
-
-    m.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-    m.on("style.load", () => {
-      setStyleLoaded(true);
-      setMapLoading(false);
-      if (userLocation) {
-        addUserLocationDot(m, userLocation.lat, userLocation.lng);
-      }
-    });
-
-    // Click → add or move marker
-    m.on("click", handleMapClick);
-
-    setMap(m);
   }
 
   // Add blue dot if user location changes after map is loaded and style is ready
