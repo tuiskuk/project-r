@@ -363,8 +363,11 @@ export default function Map({
         if (data.features) {
           setSuggestions(
             data.features
-              .sort((a: any, b: any) => (b.relevance ?? 0) - (a.relevance ?? 0))
-              .map((f: any) => ({
+              .sort(
+                (a: { relevance?: number }, b: { relevance?: number }) =>
+                  (b.relevance ?? 0) - (a.relevance ?? 0)
+              )
+              .map((f: { id: string; place_name: string; text: string; center: [number, number] }) => ({
                 id: f.id,
                 place_name: f.place_name,
                 text: f.text,
@@ -372,8 +375,8 @@ export default function Map({
               }))
           );
         }
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name !== "AbortError") {
           console.error(err);
         }
       }
