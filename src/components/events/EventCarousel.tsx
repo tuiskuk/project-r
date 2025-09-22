@@ -49,6 +49,7 @@ export function EventCarousel({ title, events }: EventCarouselProps) {
                   date={e.date}
                   place={e.place}
                   image={e.image}
+                  id={e.id}
                 />
               </SwiperSlide>
             ))}
