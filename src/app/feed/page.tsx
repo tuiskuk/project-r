@@ -1,6 +1,6 @@
 "use client";
 import cuid from "cuid";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { useUser } from "@clerk/nextjs";
@@ -12,8 +12,10 @@ type FeedMessage = {
   avatar: string;
   content: string;
   userId: string;
-  // Add other fields from your FeedMessage table as needed
 };
+
+const FEED_CHANNEL = "feed-room";
+const EVENT_MESSAGE_TYPE = "feed-message";
 
 export default function FeedPage() {
   const [feed, setFeed] = useState<FeedMessage[]>([]);
@@ -22,11 +24,8 @@ export default function FeedPage() {
   const [sending, setSending] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const currentUser = useUser();
-  console.log(currentUser);
 
-  // Example user (replace with your auth/user context)
-  
-
+  // Fetch initial feed from DB
   useEffect(() => {
     async function fetchFeed() {
       const { data, error } = await supabase
@@ -41,36 +40,22 @@ export default function FeedPage() {
       }
       setLoading(false);
     }
-
     fetchFeed();
+  }, []);
 
-    const channel = supabase
-      .channel("realtime:FeedMessage")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "FeedMessage" },
-        (payload) => {
-          const newMessage = { ...payload.new, id: String(payload.new.id) } as FeedMessage;
-          setFeed((prevFeed) => [newMessage, ...prevFeed]);
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "FeedMessage" },
-        (payload) => {
-          const updatedMessage = { ...payload.new, id: String(payload.new.id) } as FeedMessage;
-          setFeed((prevFeed) =>
-            prevFeed.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
-          );
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "FeedMessage" },
-        (payload) => {
-          setFeed((prevFeed) => prevFeed.filter((msg) => msg.id !== String(payload.old.id)));
-        }
-      )
+  // Setup Supabase broadcast channel for real-time updates
+  useEffect(() => {
+    const channel = supabase.channel(FEED_CHANNEL);
+
+    channel
+      .on("broadcast", { event: EVENT_MESSAGE_TYPE }, (payload) => {
+        const msg = payload.payload as FeedMessage;
+        setFeed((prev) => {
+          // Avoid duplicates if this client already has the message
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          return [msg, ...prev];
+        });
+      })
       .subscribe();
 
     return () => {
@@ -78,7 +63,8 @@ export default function FeedPage() {
     };
   }, []);
 
-  const handleSend = async () => {
+  // Send message: save to DB and broadcast to all clients
+  const handleSend = useCallback(async () => {
     if (!input.trim()) return;
     setSending(true);
     if (!currentUser.user) {
@@ -88,12 +74,17 @@ export default function FeedPage() {
     }
     const newMsg: FeedMessage = {
       id: cuid(),
-      user: currentUser.user.fullName || currentUser.user.username || currentUser.user.firstName || "User",
+      user: currentUser.user.fullName ||
+        currentUser.user.username ||
+        currentUser.user.firstName ||
+        "User",
       avatar: currentUser.user.imageUrl,
       userId: currentUser.user.id,
       content: input.trim(),
       time: new Date().toISOString(),
     };
+
+    // Save to DB
     const { error } = await supabase.from("FeedMessage").insert([newMsg]);
     setSending(false);
     setInput("");
@@ -101,9 +92,18 @@ export default function FeedPage() {
     if (error) {
       alert(error.message);
     } else {
-      setFeed((prevFeed) => [newMsg, ...prevFeed]);
+      // Optimistically update local feed
+      setFeed((prev) => [newMsg, ...prev]);
+      // Broadcast to other clients
+      const channel = supabase.channel(FEED_CHANNEL);
+      await channel.send({
+        type: "broadcast",
+        event: EVENT_MESSAGE_TYPE,
+        payload: newMsg,
+      });
+      supabase.removeChannel(channel);
     }
-  };
+  }, [input, currentUser.user]);
 
   return (
     <main className="flex flex-col min-h-screen bg-[#15202b]">
