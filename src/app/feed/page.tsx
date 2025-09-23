@@ -1,77 +1,169 @@
 "use client";
-import { useState } from "react";
-import { sampleFeed } from "../../../types";
+import cuid from "cuid";
+import { useEffect, useState, useRef } from "react";
+import { supabase } from "@/lib/supabase";
 import { FeedCard } from "@/components/feed/FeedCard";
+import { useUser } from "@clerk/nextjs";
+
+type FeedMessage = {
+  id: string;
+  time: string;
+  user: string;
+  avatar: string;
+  content: string;
+  userId: string;
+  // Add other fields from your FeedMessage table as needed
+};
 
 export default function FeedPage() {
-  const [activeTab, setActiveTab] = useState<"yleinen" | "seuratut">("yleinen");
+  const [feed, setFeed] = useState<FeedMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const currentUser = useUser();
+  console.log(currentUser);
+
+  // Example user (replace with your auth/user context)
+  
+
+  useEffect(() => {
+    async function fetchFeed() {
+      const { data, error } = await supabase
+        .from("FeedMessage")
+        .select("*")
+        .order("time", { ascending: false });
+
+      if (error) {
+        setFeed([]);
+      } else {
+        setFeed(Array.isArray(data) ? data.map(msg => ({ ...msg, id: String(msg.id) })) : []);
+      }
+      setLoading(false);
+    }
+
+    fetchFeed();
+
+    const channel = supabase
+      .channel("realtime:FeedMessage")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "FeedMessage" },
+        (payload) => {
+          const newMessage = { ...payload.new, id: String(payload.new.id) } as FeedMessage;
+          setFeed((prevFeed) => [newMessage, ...prevFeed]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "FeedMessage" },
+        (payload) => {
+          const updatedMessage = { ...payload.new, id: String(payload.new.id) } as FeedMessage;
+          setFeed((prevFeed) =>
+            prevFeed.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "FeedMessage" },
+        (payload) => {
+          setFeed((prevFeed) => prevFeed.filter((msg) => msg.id !== String(payload.old.id)));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    setSending(true);
+    if (!currentUser.user) {
+      alert("You must be logged in to send a message.");
+      setSending(false);
+      return;
+    }
+    const newMsg: FeedMessage = {
+      id: cuid(),
+      user: currentUser.user.fullName || currentUser.user.username || currentUser.user.firstName || "User",
+      avatar: currentUser.user.imageUrl,
+      userId: currentUser.user.id,
+      content: input.trim(),
+      time: new Date().toISOString(),
+    };
+    const { error } = await supabase.from("FeedMessage").insert([newMsg]);
+    setSending(false);
+    setInput("");
+    inputRef.current?.focus();
+    if (error) {
+      alert(error.message);
+    } else {
+      setFeed((prevFeed) => [newMsg, ...prevFeed]);
+    }
+  };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      {/* Top bar (reused) */}
-
-      {/* Main layout */}
-      <div className="flex flex-1">
-        {/* Left sidebar */}
-        <div className="hidden lg:flex flex-col w-64 p-4 space-y-4 border-r border-gray-200">
-          <button className="p-2 rounded hover:bg-gray-100 cursor-pointer">Tapahtumat</button>
-          <button className="p-2 rounded hover:bg-gray-100 cursor-pointer">Seurattavat</button>
-          <button className="p-2 rounded hover:bg-gray-100 cursor-pointer">Asetukset</button>
+    <main className="flex flex-col min-h-screen bg-[#15202b]">
+      <header className="w-full py-4 bg-[#192734] shadow">
+        <div className="max-w-xl mx-auto px-4">
+          <h1 className="text-2xl font-bold text-white">Home</h1>
         </div>
-
+      </header>
+      <section className="flex-1 max-w-xl mx-auto w-full border-x border-[#38444d] min-h-[80vh]">
+        {/* Input box */}
+        <div className="flex space-x-3 px-4 py-6 border-b border-[#38444d] bg-[#192734]">
+          <img
+            src={currentUser.user?.imageUrl || "/default-avatar.png"}
+            alt={currentUser.user?.firstName || "User"}
+            className="w-12 h-12 rounded-full object-cover"
+          />
+          <div className="flex-1">
+            <textarea
+              ref={inputRef}
+              className="w-full bg-transparent text-white border-none outline-none resize-none text-lg placeholder-gray-400"
+              rows={2}
+              maxLength={280}
+              placeholder="What's happening?"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              disabled={sending}
+              onKeyDown={e => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+            />
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-sm text-gray-500">{input.length}/280</span>
+              <button
+                onClick={handleSend}
+                disabled={sending || !input.trim()}
+                className="bg-[#1da1f2] hover:bg-[#1a8cd8] text-white font-bold py-2 px-6 rounded-full transition disabled:opacity-60"
+              >
+                {sending ? "Sending..." : "Tweet"}
+              </button>
+            </div>
+          </div>
+        </div>
         {/* Feed */}
-        <div className="flex-1 p-4 space-y-4 max-w-2xl mx-auto w-full">
-          {/* Tabs for feed */}
-          <div className="flex space-x-4 mb-4">
-            <button
-              className={`flex-1 py-2 text-center font-semibold rounded ${
-                activeTab === "yleinen"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-              onClick={() => setActiveTab("yleinen")}
-            >
-              Yleinen
-            </button>
-            <button
-              className={`flex-1 py-2 text-center font-semibold rounded ${
-                activeTab === "seuratut"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-              onClick={() => setActiveTab("seuratut")}
-            >
-              Seuratut
-            </button>
-          </div>
-
-          {/* Post input */}
-          <div className="flex items-start space-x-4 p-4 bg-white rounded-xl shadow">
-            <img
-              src="https://i.pravatar.cc/40?img=11"
-              alt="User avatar"
-              className="w-10 h-10 rounded-full"
-            />
-            <input
-              type="text"
-              placeholder="Mitä ajatuksia sinulla on?"
-              className="flex-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Feed posts */}
-          {sampleFeed.map((msg) => (
-            <FeedCard key={msg.id} message={msg} />
-          ))}
+        <div className="flex flex-col">
+          {loading ? (
+            <div className="flex justify-center items-center h-40">
+              <span className="text-gray-400 text-lg">Loading...</span>
+            </div>
+          ) : feed.length === 0 ? (
+            <div className="flex justify-center items-center h-40">
+              <span className="text-gray-400 text-lg">No feed messages yet.</span>
+            </div>
+          ) : (
+            feed.map((msg) => <FeedCard key={msg.id} message={msg} />)
+          )}
         </div>
-
-        {/* Right sidebar */}
-        <div className="hidden lg:flex flex-col w-64 p-4 space-y-4 border-l border-gray-200">
-          <button className="p-2 rounded hover:bg-gray-100 cursor-pointer">Uusi tapahtuma</button>
-          <button className="p-2 rounded hover:bg-gray-100 cursor-pointer">Suosituimmat</button>
-          <button className="p-2 rounded hover:bg-gray-100 cursor-pointer">Rukouspyynnöt</button>
-        </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

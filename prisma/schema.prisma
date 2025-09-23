@@ -132,3 +132,46 @@ model Role {
   User User[]
 }
 
+model FeedMessage {
+  id        String     @id @default(cuid())
+  userId    String
+  user      String
+  avatar    String?
+  content   String
+  image     String?
+  time      DateTime   @default(now())
+  comments  Comment[]  @relation("FeedMessageComments")
+  likes     FeedLike[]
+}
+
+model FeedLike {
+  id         String      @id @default(cuid())
+  userId     String
+  feedId     String
+  createdAt  DateTime    @default(now())
+  feed       FeedMessage @relation(fields: [feedId], references: [id])
+}
+
+model Comment {
+  id          String      @id @default(cuid())
+  messageId   String?
+  message     FeedMessage? @relation("FeedMessageComments", fields: [messageId], references: [id])
+  parentId    String?
+  parent      Comment?    @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[]   @relation("CommentReplies")
+  userId      String
+  user        String
+  avatar      String?
+  content     String
+  time        DateTime    @default(now())
+  likes       CommentLike[]
+}
+
+model CommentLike {
+  id         String   @id @default(cuid())
+  userId     String
+  commentId  String
+  createdAt  DateTime @default(now())
+  comment    Comment  @relation(fields: [commentId], references: [id])
+}
+
