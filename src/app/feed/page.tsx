@@ -24,6 +24,7 @@ export default function FeedPage() {
   const [sending, setSending] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const currentUser = useUser();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Fetch initial feed from DB
   useEffect(() => {
@@ -51,15 +52,17 @@ export default function FeedPage() {
       .on("broadcast", { event: EVENT_MESSAGE_TYPE }, (payload) => {
         const msg = payload.payload as FeedMessage;
         setFeed((prev) => {
-          // Avoid duplicates if this client already has the message
           if (prev.some((m) => m.id === msg.id)) return prev;
           return [msg, ...prev];
         });
       })
       .subscribe();
 
+    channelRef.current = channel;
+
     return () => {
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
   }, []);
 
@@ -92,16 +95,15 @@ export default function FeedPage() {
     if (error) {
       alert(error.message);
     } else {
-      // Optimistically update local feed
       setFeed((prev) => [newMsg, ...prev]);
-      // Broadcast to other clients
-      const channel = supabase.channel(FEED_CHANNEL);
-      await channel.send({
-        type: "broadcast",
-        event: EVENT_MESSAGE_TYPE,
-        payload: newMsg,
-      });
-      supabase.removeChannel(channel);
+      // Use the persistent channel for broadcasting
+      if (channelRef.current) {
+        await channelRef.current.send({
+          type: "broadcast",
+          event: EVENT_MESSAGE_TYPE,
+          payload: newMsg,
+        });
+      }
     }
   }, [input, currentUser.user]);
 
