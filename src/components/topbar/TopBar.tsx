@@ -12,7 +12,8 @@ export function TopBar() {
   const [search, setSearch] = useState("");
   const pathname = usePathname();
 
-  const showSecondaryNav = false;
+  // Show secondary nav only on main pages
+  const showSecondaryNav = /^\/[^/]+\/?$/.test(pathname);
 
   // Responsive placeholder for search (client-side)
   const [searchPlaceholder, setSearchPlaceholder] = useState("Etsi tapahtumia");

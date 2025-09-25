@@ -8,6 +8,12 @@ const nextConfig = {
         }
         return config;
     },
+    images: {
+    domains: [
+      "img.clerk.com",
+      // add other domains if needed
+    ],
+  },
 };
 
 export default nextConfig;

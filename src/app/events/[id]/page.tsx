@@ -1,8 +1,11 @@
+
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { fi } from "date-fns/locale/fi";
 import EventPageInfoCard from "@/components/events/EventPageInfoCard";
 import EventLocationMap from "@/components/map/EventLocationMap";
+import { Suspense } from "react";
+import SignupSection from "@/components/events/signup/SignupSection";
 
 // Kuvaus component
 function Kuvaus({ children }: { children: React.ReactNode }) {
@@ -27,6 +30,7 @@ async function getEvent(id: string) {
   return res.json();
 }
 
+// Main server component
 export default async function EventDetailPage({ params }: { params: { id: string } }) {
   const event = await getEvent(params.id);
 
@@ -105,6 +109,13 @@ export default async function EventDetailPage({ params }: { params: { id: string
             </div>
           </div>
         </aside>
+      </div>
+
+      {/* Signup section */}
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 py-8">
+        <Suspense fallback={<div>Loading signups...</div>}>
+          <SignupSection eventId={params.id} eventName={event.title} eventDate={dateString} />
+        </Suspense>
       </div>
     </div>
   );

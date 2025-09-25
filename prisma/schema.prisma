@@ -107,14 +107,19 @@ model EventTargetGroups {
 }
 
 model Signup {
-  id        String   @id @default(cuid())
-  userId    String
-  eventId   String
-  age       Int?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  eventId     String
+  age         Int?
+  displayName String?
+  avatar      String?
+  bio         String?
+  status      String? // e.g. "Going", "Maybe"
+  joinedAt    DateTime @default(now())
+  customFields Json?
+  createdAt   DateTime @default(now())
 
-
-  event     Event    @relation(fields: [eventId], references: [id])
+  event       Event    @relation(fields: [eventId], references: [id])
 
   @@unique([userId, eventId])
   User User[]
@@ -142,6 +147,9 @@ model FeedMessage {
   time      DateTime   @default(now())
   comments  Comment[]  @relation("FeedMessageComments")
   likes     FeedLike[]
+  commentCount Int      @default(0)
+  likeCount    Int      @default(0)
+  repostCount  Int      @default(0)
 }
 
 model FeedLike {
@@ -165,6 +173,7 @@ model Comment {
   content     String
   time        DateTime    @default(now())
   likes       CommentLike[]
+  likeCount   Int         @default(0)
 }
 
 model CommentLike {
